@@ -59,5 +59,17 @@ public class TestController {
         );
         return "ok";
     }
+
+    /** 模擬 N + 1 Problem (2) */
+    @GetMapping(value="/test2")
+    public String test2() {
+        productTypeRepository.findAll().forEach(
+            productType -> {
+                log.info(productType.getProductTypeName());
+                log.info(productType.getProducts().get(0).getProductName());
+            }
+        );
+        return "ok";
+    }
     
 }

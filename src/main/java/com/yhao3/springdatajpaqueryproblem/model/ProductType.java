@@ -31,7 +31,8 @@ public class ProductType {
 
     @OneToMany(
         mappedBy = "productType", 
-        fetch = FetchType.EAGER, 
+        // fetch = FetchType.EAGER, 
+        fetch = FetchType.LAZY, 
         cascade = CascadeType.PERSIST
     )
     private List<Product> products;

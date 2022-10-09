@@ -6,224 +6,58 @@
     <img alt="N + 1 Problem" src="https://img.shields.io/badge/N+1%20Problem-blue">
 </p>
 
-<h1 align="center">Section 01</h1>
+<h1 align="center">Section 02</h1>
 
-## What is $N + 1$ Problem
+## $N + 1$ Problem 與 `LAZY`、`EAGER` loading 之間的關係？
 
-在 Systems design 中，TABLE 之間「一對多」、「多對多」的關係十分常見，常常會有需要同時抓取多張 TABLE 的需求。
+您可能會好奇 Demo 中為何會發生 $N + 1$ Problem。
 
-例如在「商品類別」與「商品」之間「一對多」的情境下，若要同時抓取 $5$ 筆商品類別及各類別中的所有商品。如果是直接下 SQL，我們可以很直覺地使用 1 條 `JOIN` statement 就達成需求。但是在 ORM 框架中，框架可能會幫我們產生並執行 6 次 query statements！也就是 1 條 SQL 可以解決的問題，ORM 卻需要 6 條 SQL，這勢必會帶來效能問題！
+會不會是因為我們將 `@OneToMany` 該 annotation 的 `fetch` 屬性被宣告為 `FetchType.EAGER` 了呢？
 
-而本文將會模擬 Spring Data JPA 的 $N + 1$ Problem 並示範 Solution！
+> `EAGER` loading 簡單來說就是「ORM 會提前幫我們撈出所有指定的關聯資料」。相反的，`LAZY` loading 則是代表「ORM 會延遲撈出所有指定的關聯資料，直到真的需要用到時才會去撈資料」！所以 `LAZY` loading 的出發點是好的！它可以減少多餘的資料傳輸！
+> 
 
-## Demo
+那還不簡單，我們就把 `fetch` 屬性改為 `FetchType.LAZY` 不就大功告成了？
 
-Demo 將模擬 `product_type` 與 `product` 兩張 TABLE `@OneToMany` `@ManyToOne` 的 Bidirectional Association
+我們重新啟動 application，並重複之前的測試，可以發現印出以下 Log: 
 
-- Project: `Maven Project`
-- Spring Boot version: `2.7.4`
-- Java version: `11`
-- Dependencies:
-    - `Spring Web`
-    - `Spring Data JPA`
-    - `Lombok`
-    - `H2 Database`
-- Configuration
-    - application.yml
-        
-        ```yaml
-        spring: 
-            datasource: 
-                driver-class-name: org.h2.Driver # 使用 H2 資料庫，並將 Data 設定在 memory
-                url: jdbc:h2:mem:testdb # 將 Data 設定為 In-memory，並指定 schema 為 testdb
-                username: sa # 設定 username
-                password: sa # 設定 password
-            h2:
-                console:
-                    enabled: true     # 啟用 H2 的 console
-                    path: /h2-console # 可通過 http://localhost:8080/h2-console 開啟 console
-            jpa: 
-                show-sql: true # 印出 JPA 產生的 SQL
-                hibernate: 
-                    ddl-auto: update # 讓 Hibernate 根據 javax.persistence 相關的 Annotations 幫我們自動建立、更新 TABLE
-                properties:
-                    hibernate:
-                        '[generate_statistics]': true # 啟用 Hibernate 的 statistics 功能
-        ```
-        
+```sql
+Hibernate: select producttyp0_.product_type_id as product_1_1_, producttyp0_.product_type_name as product_2_1_ from product_type producttyp0_
+2022-10-10 03:29:55.116  INFO 34970 --- [nio-8080-exec-1] i.StatisticalLoggingSessionEventListener : Session Metrics {
+    98875 nanoseconds spent acquiring 1 JDBC connections;
+    0 nanoseconds spent releasing 0 JDBC connections;
+    395834 nanoseconds spent preparing 1 JDBC statements;
+    144375 nanoseconds spent executing 1 JDBC statements;
+    0 nanoseconds spent executing 0 JDBC batches;
+    0 nanoseconds spent performing 0 L2C puts;
+    0 nanoseconds spent performing 0 L2C hits;
+    0 nanoseconds spent performing 0 L2C misses;
+    0 nanoseconds spent executing 0 flushes (flushing a total of 0 entities and 0 collections);
+    8541 nanoseconds spent executing 1 partial-flushes (flushing a total of 0 entities and 0 collections)
+}
+```
 
-### Entities
+Perfect! 我們成功解決 $N + 1$ Problem 了！喜歡本文記得幫我按個 `⭐ Star`...
 
-- ProductType.java
-    
-    ```java
-    @Getter
-    @Setter
-    @Table
-    @Entity
-    public class ProductType {
-    
-        @Id
-        @GeneratedValue(strategy = GenerationType.IDENTITY)
-        @Column(name = "product_type_id")
-        private Long productTypeId;
-    
-        @Column(name = "product_type_name")
-        private String productTypeName;
-    
-        @OneToMany(
-            mappedBy = "productType", 
-            fetch = FetchType.EAGER, 
-            cascade = CascadeType.PERSIST
-        )
-        private List<Product> products;
-    }
-    ```
-    
-- Product.java
-    
-    ```java
-    @Getter
-    @Setter
-    @Table
-    @Entity
-    public class Product {
-    
-        @Id
-        @GeneratedValue(strategy = GenerationType.IDENTITY)
-        @Column(name = "product_id")
-        private Long productId;
-    
-        @Column(name = "product_name")
-        private String productName;
-    
-        @ManyToOne
-        @JoinColumn(name = "product_type_id")
-        private ProductType productType;
-        
-    }
-    ```
-    
+很遺憾，事情並沒有想像中那麼簡單！
 
-### Repository
+讓我們再進行第二個測試，訪問 `[http://localhost:8080/test2](http://localhost:8080/test2)`，這次我們還另外呼叫了 `getProducts()` 印出每個商品分類底下的第一個商品。觀察 Log 可以發現 $N + 1$ Problem 又出現了... 也就是說 `FetchType.LAZY` 其實只是「延遲了 $N + 1$ Problem 的發生」罷了！
 
-- ProductTypeRepository.java
-    
-    ```java
-    @Repository
-    public interface ProductTypeRepository extends JpaRepository<ProductType, Long> {}
-    ```
-    
-- ProductRepository.java
-    
-    ```java
-    @Repository
-    public interface ProductRepository extends JpaRepository<Product, Long> {}
-    ```
-    
+## $N + 1$ Problem 合理嗎？
 
-### Controller
+說到底，導致 $N + 1$ Problem 發生的原因，其實就只是因為 JPA 在關聯表之間檢索時生成 SQL 的機制是這樣設計的而已。但重點是 $N + 1$ Problem 合理嗎？
 
-- TestController.java
-    
-    ```java
-    @Slf4j
-    @RestController
-    public class TestController {
-    
-        @Autowired
-        private ProductRepository productRepository;
-    
-        @Autowired
-        private ProductTypeRepository productTypeRepository;
-        
-        /** 新增 5 筆商品類別，並在每筆商品類別中各新增一筆商品 */
-        @GetMapping("/insert")
-        public String insertProductTypesAndProudcts() {
-            for (int i = 0; i < 5; i++) {
-    
-                // create Product
-                List<Product> products = new LinkedList<>();
-                Product product = new Product();
-                product.setProductName("product" + i);
-                products.add(product);
-    
-                // create ProductType
-                ProductType productType = new ProductType();
-                productType.setProductTypeName("productType" + i);
-                productType.setProducts(products);
-                productType = productTypeRepository.save(productType);
-    
-                // update product
-                product.setProductType(productType);
-                productRepository.save(product);
-            }
-            return "ok";
-        }
-    
-        /** 模擬 N + 1 Problem */
-        @GetMapping(value="/test")
-        public String test() {
-            productTypeRepository.findAll().forEach(
-                productType -> {
-                    log.info(productType.getProductTypeName());
-                }
-            );
-            return "ok";
-        }
-        
-    }
-    ```
-    > Note: 這裡的 Controller 並不會遵循 RESTful 的規範，因為這並不是本文的重點
-    
+其實對於 `LAZY` loading 的場景，會發生 $N + 1$ Problem 也是非常合理的！因為 `LAZY` loading 的精神就是「需要時才撈資料」！所以根本沒必要一開始就用 $1$ 條 JOIN Query 把所有關聯資料全部都撈出來。
 
-### Test
+至於針對 `EAGER` loading 的場景，還發生 $N + 1$ Problem 就是不被允許的了！因為在「需要撈關聯資料」的場景下，明明可以用 $1$ 條 JOIN Query 就達成，那為何還要將其拆成 $N + 1$ 條 Query 呢？
 
-1. 啟動 application
-    
-    ```bash
-    ./mvnw spring-boot:run
-    ```
-    
-2. 訪問 URL: [`http://localhost:8080/insert`](http://localhost:8080/insert) 
-    - 新增 5 筆商品類別，並在每筆商品類別中各新增一筆商品
-    - 可以開啟 [H2 console](http://localhost:8080/h2-console) 確認是否有成功新增 5 筆 `PRODUCT_TYPE` 及 `PRODUCT`
-        - Driver Class: `org.h2.Driver`
-        - JDBC URL: `jdbc:h2:mem:testdb`
-        - User Name: `sa`
-        - Password: `sa`
-3. 訪問 URL: [`http://localhost:8080/test`](http://localhost:8080/test)
-    - 模擬 $N+1$ Problem 。其中 $N$ 代表「一方(ProductType)的筆數」
-    - 因為目前總共有 `5` 筆商品類別，故共會執行 `5 + 1` 次 query statements
-    - 印出之 Log 如下:
-    
-    ```sql
-    Hibernate: select producttyp0_.product_type_id as product_1_1_, producttyp0_.product_type_name as product_2_1_ from product_type producttyp0_
-    Hibernate: select products0_.product_type_id as product_3_0_0_, products0_.product_id as product_1_0_0_, products0_.product_id as product_1_0_1_, products0_.product_name as product_2_0_1_, products0_.product_type_id as product_3_0_1_ from product products0_ where products0_.product_type_id=?
-    Hibernate: select products0_.product_type_id as product_3_0_0_, products0_.product_id as product_1_0_0_, products0_.product_id as product_1_0_1_, products0_.product_name as product_2_0_1_, products0_.product_type_id as product_3_0_1_ from product products0_ where products0_.product_type_id=?
-    Hibernate: select products0_.product_type_id as product_3_0_0_, products0_.product_id as product_1_0_0_, products0_.product_id as product_1_0_1_, products0_.product_name as product_2_0_1_, products0_.product_type_id as product_3_0_1_ from product products0_ where products0_.product_type_id=?
-    Hibernate: select products0_.product_type_id as product_3_0_0_, products0_.product_id as product_1_0_0_, products0_.product_id as product_1_0_1_, products0_.product_name as product_2_0_1_, products0_.product_type_id as product_3_0_1_ from product products0_ where products0_.product_type_id=?
-    Hibernate: select products0_.product_type_id as product_3_0_0_, products0_.product_id as product_1_0_0_, products0_.product_id as product_1_0_1_, products0_.product_name as product_2_0_1_, products0_.product_type_id as product_3_0_1_ from product products0_ where products0_.product_type_id=?
-    2022-10-10 03:29:30.580  INFO 34891 --- [nio-8080-exec-2] c.y.s.Controller.TestController          : productType0
-    2022-10-10 03:29:30.580  INFO 34891 --- [nio-8080-exec-2] c.y.s.Controller.TestController          : productType1
-    2022-10-10 03:29:30.580  INFO 34891 --- [nio-8080-exec-2] c.y.s.Controller.TestController          : productType2
-    2022-10-10 03:29:30.580  INFO 34891 --- [nio-8080-exec-2] c.y.s.Controller.TestController          : productType3
-    2022-10-10 03:29:30.580  INFO 34891 --- [nio-8080-exec-2] c.y.s.Controller.TestController          : productType4
-    2022-10-10 03:29:30.581  INFO 34891 --- [nio-8080-exec-2] i.StatisticalLoggingSessionEventListener : Session Metrics {
-        117250 nanoseconds spent acquiring 1 JDBC connections;
-        0 nanoseconds spent releasing 0 JDBC connections;
-        580416 nanoseconds spent preparing 6 JDBC statements;
-        790792 nanoseconds spent executing 6 JDBC statements;
-        0 nanoseconds spent executing 0 JDBC batches;
-        0 nanoseconds spent performing 0 L2C puts;
-        0 nanoseconds spent performing 0 L2C hits;
-        0 nanoseconds spent performing 0 L2C misses;
-        0 nanoseconds spent executing 0 flushes (flushing a total of 0 entities and 0 collections);
-        12708 nanoseconds spent executing 1 partial-flushes (flushing a total of 0 entities and 0 collections)
-    }
-    ```
+所以在解決問題之前，我們必須重新釐清、限縮問題：我們需要解決的不是「所有 $N + 1$ Problem」，而是只有「 `EAGER` loading 場景下發生的 $N + 1$ Problem」！
 
-### 切換到 `section-02` branch 接續下一小節的內容
+那這樣是不是代表 JPA 在 `FetchType.EAGER` 的實作上設計不良呢？一開始實作就將所有關聯 TABLE JOIN 起來不就大功告成了嗎？
+
+是的！所以我將 `FetchType.EAGER` 對 `EAGER` mode 的實作稱為「愚蠢的 `EAGER` mode」！我相信 Java 團隊自己也意識到了這個問題，因此在 JPA 2.1 版本，就提供了「聰明的 `EAGER` mode」的作法！因此下一小節，我們將會介紹 JPA 2.1 版本提供的「聰明的 `EAGER` mode」的作法！
+
+### 切換到 `section-03` branch 接續下一小節的內容
 ```shell
-git checkout -b section-02
+git checkout -b section-03
 ```
