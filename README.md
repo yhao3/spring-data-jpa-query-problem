@@ -7,6 +7,7 @@
 </p>
 
 <h1 align="center">Section 01</h1>
+
 ## What is $N + 1$ Problem
 
 在 Systems design 中，TABLE 之間「一對多」、「多對多」的關係十分常見，常常會有需要同時抓取多張 TABLE 的需求。
