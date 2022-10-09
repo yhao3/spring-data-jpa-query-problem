@@ -41,7 +41,7 @@ Perfect! 我們成功解決 $N + 1$ Problem 了！喜歡本文記得幫我按個
 
 很遺憾，事情並沒有想像中那麼簡單！
 
-讓我們再進行第二個測試，訪問 `[http://localhost:8080/test2](http://localhost:8080/test2)`，這次我們還另外呼叫了 `getProducts()` 印出每個商品分類底下的第一個商品。觀察 Log 可以發現 $N + 1$ Problem 又出現了... 也就是說 `FetchType.LAZY` 其實只是「延遲了 $N + 1$ Problem 的發生」罷了！
+讓我們再進行第二個測試，訪問 [`http://localhost:8080/test2`](http://localhost:8080/test2)，這次我們還另外呼叫了 `getProducts()` 印出每個商品分類底下的第一個商品。觀察 Log 可以發現 $N + 1$ Problem 又出現了... 也就是說 `FetchType.LAZY` 其實只是「延遲了 $N + 1$ Problem 的發生」罷了！
 
 ## $N + 1$ Problem 合理嗎？
 
