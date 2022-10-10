@@ -34,21 +34,21 @@ Demo 將模擬 `product_type` 與 `product` 兩張 TABLE `@OneToMany` `@ManyToOn
         ```yaml
         spring: 
             datasource: 
-                driver-class-name: org.h2.Driver # 使用 H2 資料庫，並將 Data 設定在 memory
-                url: jdbc:h2:mem:testdb # 將 Data 設定為 In-memory，並指定 schema 為 testdb
-                username: sa # 設定 username
-                password: sa # 設定 password
+                driver-class-name: org.h2.Driver
+                url: jdbc:h2:mem:testdb
+                username: sa
+                password: sa
             h2:
                 console:
-                    enabled: true     # 啟用 H2 的 console
-                    path: /h2-console # 可通過 http://localhost:8080/h2-console 開啟 console
+                    enabled: true
+                    path: /h2-console
             jpa: 
-                show-sql: true # 印出 JPA 產生的 SQL
+                show-sql: true
                 hibernate: 
-                    ddl-auto: update # 讓 Hibernate 根據 javax.persistence 相關的 Annotations 幫我們自動建立、更新 TABLE
+                    ddl-auto: update
                 properties:
                     hibernate:
-                        '[generate_statistics]': true # 啟用 Hibernate 的 statistics 功能
+                        '[generate_statistics]': true
         ```
         
 
