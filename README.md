@@ -12,7 +12,7 @@
 
 那麽到底該怎麼解決 $N + 1$ Problem 呢？ JPA 2.1 版本就新增了新的 Annotation `@EntityGraph` 來解決這個問題！我們可以使用 `@EntityGraph` 及其 `attributePaths` 屬性創建 ad-hoc entity graph，如此一來 JPA 最終就只會產生 $1$ 條 JOIN Query！
 
-> Note: 也可以使用 `@NamedEntityGraph` 搭配 `@EntityGraph` 達成相同的效果，但只使用 `@EntityGraph` 更加簡潔且直覺！所以本文只介紹 `@EntityGraph` 的用法。有興趣可參考這篇 Baeldung 的文章： [Spring Data JPA and Named Entity Graphs | Baeldung](https://www.baeldung.com/spring-data-jpa-named-entity-graphs)
+> **Note**: 也可以使用 `@NamedEntityGraph` 搭配 `@EntityGraph` 達成相同的效果，但只使用 `@EntityGraph` 更加簡潔且直覺！所以本文只介紹 `@EntityGraph` 的用法。有興趣可參考這篇 Baeldung 的文章： [Spring Data JPA and Named Entity Graphs | Baeldung](https://www.baeldung.com/spring-data-jpa-named-entity-graphs)
 
 
 ### `@EntityGraph`
@@ -44,7 +44,7 @@
                 - 使被 `attributePaths` 指定到的屬性被視為 `FetchType.EAGER`
                 - 未被指定的屬性則根據其 指定的 FetchType 或 預設的 FetchType 處理。
                     
-                    > Note:
+                    > **Note**:
                     > - `@OneToMany` 預設的 FetchType 為 `LAZY`
                     > - `@ManyToOne` 預設的 FetchType 為 `EAGER`
                     
@@ -131,3 +131,5 @@ public interface ProductTypeRepository extends JpaRepository<ProductType, Long> 
             List<ProductType> findAll();
         }
         ```
+
+> **Note**: 以上內容都是我自己消化過後的見解，可能有些用詞不精確甚至錯誤，歡迎大家提出疑問或批評指教！
