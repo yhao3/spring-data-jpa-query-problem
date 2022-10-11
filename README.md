@@ -174,7 +174,7 @@ Demo 將模擬 `product_type` 與 `product` 兩張 TABLE `@OneToMany` `@ManyToOn
         
     }
     ```
-    > Note: 這裡的 Controller 並不會遵循 RESTful 的規範，因為這並不是本文的重點
+    > **Note**: 這裡的 Controller 並不會遵循 RESTful 的規範，因為這並不是本文的重點
     
 
 ### Test
